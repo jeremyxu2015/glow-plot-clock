@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夜光手写时钟 · Plot Clock 装配指南（ESP8266 版）</title>
+<meta name="description" content="Glow-in-the-Dark Robot Plot Clock 中文装配指南：基于 WEMOS D1 (ESP8266) 的改造版，WiFi 配网 + NTP 自动校时，双舵机机械臂用 UV LED 在荧光膜上写出当前时间。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E4%BA%91%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar glass">
+  <div class="topbar-inner">
+    <a class="brand" href="#top">
+      <span class="brand-dot"></span>
+      <span class="brand-text">Plot Clock <i>· 装配指南</i></span>
+    </a>
+    <nav class="topnav" id="topnav">
+      <a href="#overview">概览</a>
+      <a href="#bom">材料清单</a>
+      <a href="#print">3D 打印</a>
+      <a href="#wiring">接线</a>
+      <a href="#firmware">固件</a>
+      <a href="#assemble">装配</a>
+      <a href="#calibrate">校准</a>
+      <a href="#usage">使用</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="hero-bg" style="background-image:var(--hero-img)"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <p class="eyebrow">GLOW · HANDS-FREE CLOCK</p>
+      <h1>夜光手写时钟<br>装配指南</h1>
+      <p class="sub">机器人手臂用紫外线在荧光膜上"写"出当前时间，荧光在黑暗中缓缓发光。本指南基于原版 <em>Glow-in-the-Dark Robot Plot Clock</em>（Tucker Shannon / Make:）的 <strong>ESP8266 改造版</strong>：主控换成 WEMOS D1，WiFi 配网 + NTP 自动校时，去掉了 RTC 模块与电池。</p>
+      <div class="hero-chips">
+        <span class="chip">约 1–3 小时</span>
+        <span class="chip">难度 中等</span>
+        <span class="chip">无需焊接经验？不，需要一点点</span>
+      </div>
+      <a class="btn" href="#bom">开始装配 ↓</a>
+      <a class="btn ghost" href="#firmware">先看固件怎么刷</a>
+    </div>
+  </section>
+
+  <!-- ================= CONTENT LAYOUT ================= -->
+  <div class="layout">
+
+    <aside class="sidebar glass" id="sidebar">
+      <p class="side-title">装配步骤</p>
+      <ol class="side-nav" id="sideNav">
+        <li><a href="#overview" class="active">01 项目概览</a></li>
+        <li><a href="#bom">02 材料清单</a></li>
+        <li><a href="#print">03 3D 打印</a></li>
+        <li><a href="#wiring">04 接线</a></li>
+        <li><a href="#firmware">05 固件与配网</a></li>
+        <li><a href="#assemble">06 机械装配</a></li>
+        <li><a href="#calibrate">07 伺服校准</a></li>
+        <li><a href="#usage">08 使用与 FAQ</a></li>
+      </ol>
+      <div class="side-note">
+        <p class="side-note-title">本版特点</p>
+        <p>按一下按钮，机械臂就把当前时间写到荧光屏上，24 小时制，荧光持续数分钟后渐息。</p>
+      </div>
+    </aside>
+
+    <article class="content">
+
+      <!-- ================= OVERVIEW ================= -->
+      <section id="overview" class="step">
+        <h2><span class="num">01</span>项目概览</h2>
+        <p class="lead">和原版相比，这一版做的改动：<strong>WEMOS D1（ESP8266）</strong> 替代 Arduino Uno；<strong>WiFiManager 配网</strong> + <strong>阿里云 NTP 自动联网校时</strong>，因此<strong>不再需要</strong> DS1307 RTC 模块和电池；时间精度由网络保证，永不漂移。</p>
+
+        <div class="grid2">
+          <div class="card glass">
+            <h3>工作原理</h3>
+            <ol class="tick">
+              <li>按下按钮（或 D3 引脚接地），触发中断</li>
+              <li>两块 9g 舵机联动，把 UV LED 移动到目标坐标</li>
+              <li>从 NTP 读当前时间，按字形拆解为直线与圆弧</li>
+              <li>UV 灯贴着荧光膜"扫"出 时:分，荧光通体发亮</li>
+              <li>写完机械臂回位、舵机断电，荧光约数分钟后渐息</li>
+            </ol>
+          </div>
+          <div class="card glass demo-card">
+            <h3>效果演示 <small>（实时时钟）</small></h3>
+            <canvas id="demo" width="420" height="250"></canvas>
+            <p class="demo-hint">用与固件相同的字形算法在画布上实时"书写"当前时间</p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <b>先读这里：</b>原版项目来自 <a href="https://makezine.com/projects/glow-in-the-dark-robot-plot-clock/" target="_blank" rel="noopener">Make: Project（原版网页）</a>，机械结构（外壳、手臂、聚光锥）与原版完全一致；固件我们重写为 ESP8266 版，接线方式以<a href="#wiring">本指南第 04 节</a>为准。
+        </div>
+      </section>
+
+      <!-- ================= BOM ================= -->
+      <section id="bom" class="step">
+        <h2><span class="num">02</span>材料清单（BOM）</h2>
+        <p class="lead">总价约 ¥60–120（淘宝/拼多多散件）。注意几个关键坑已用 <b>红字</b> 标出。</p>
+        <div class="table-wrap glass">
+          <table>
+            <thead>
+              <tr><th>材料</th><th>数量</th><th>备注</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>WEMOS D1 mini（ESP8266）</td><td>1</td><td>主控，替代原版 Arduino Uno</td></tr>
+              <tr><td>9g 微型舵机</td><td>2</td><td class="warn">一定要是<b>正向舵机（0–180°）</b>：最直观的区分是舵盘四角都有螺丝孔；连续旋转舵机会一直转，不能用</td></tr>
+              <tr><td>5mm UV LED</td><td>1</td><td class="warn">紫色<b>验钞灯</b>那种（365–395nm）荧光效果最好；白色可见光次之</td></tr>
+              <tr><td>12mm 轻触开关（自复位）</td><td>1</td><td>按下接通、松手断开，常开型</td></tr>
+              <tr><td>自粘荧光膜 / 荧光贴</td><td>1 张</td><td class="warn">荧光<b>绿色</b>效果最好，宽度 4mm 左右合适</td></tr>
+              <tr><td>M3×8 六角螺丝</td><td>10</td><td>外壳 + 机械臂固定</td></tr>
+              <tr><td>橡胶脚垫</td><td>4</td><td>底部防滑</td></tr>
+              <tr><td>杜邦线 / 22AWG 导线</td><td>若干</td><td>约 20–30cm</td></tr>
+              <tr><td>Micro-USB 电源线</td><td>1</td><td>5V 供电；两舵机同时发力，建议 5V / 1A 以上电源</td></tr>
+              <tr><td>100Ω 限流电阻（可选）</td><td>1</td><td>UV LED 限流保护（串在 D5 与 LED 正极之间）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="footnote">打印件请见<strong>第 03 节</strong>；如果你已有原版 Arduino 方案的其他零件（RTC、降压模块等），本版用不到，可以收起来。</p>
+      </section>
+
+      <!-- ================= PRINT ================= -->
+      <section id="print" class="step">
+        <h2><span class="num">03</span>3D 打印零件</h2>
+        <p class="lead">共 8 个 STL，工程目录 <code>stls/</code> 下，与原版 Thingiverse 文件一致。用 PLA 打印即可，<strong>无需支撑</strong>。</p>
+        <div class="print-params glass">
+          <div><span>层高</span><b>0.18 mm</b></div>
+          <div><span>填充率</span><b>15%</b></div>
+          <div><span>速度</span><b>60 mm/s</b></div>
+          <div><span>支撑</span><b>无</b></div>
+          <div><span>材料</span><b>PLA / ABS</b></div>
+        </div>
+        <div class="table-wrap glass">
+          <table>
+            <thead>
+              <tr><th>文件</th><th>用途</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>Arm1-2.STL</code></td><td>左机械臂（两段一体）</td></tr>
+              <tr><td><code>Arm3.STL</code></td><td>右机械臂上段</td></tr>
+              <tr><td><code>Arm4.STL</code></td><td>右机械臂下段</td></tr>
+              <tr><td><code>led_cover.STL</code></td><td>UV LED 聚光锥罩</td></tr>
+              <tr><td><code>Case.STL</code></td><td>外壳主体</td></tr>
+              <tr><td><code>Case_Front.STL</code></td><td>前面板（荧光贴贴在它上面）</td></tr>
+              <tr><td><code>Case_Top.STL</code></td><td>顶盖</td></tr>
+              <tr><td><code>Case_Top_Human.stl</code></td><td>顶盖变体（预留传感器开口，可选；旧版扩展可选用）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout"><b>打印建议：</b>外壳的几个件可以一次性全部摆进打印平台；打印完成后把所有孔位用 M3 螺丝先试拧一遍，保证螺纹顺滑、活动件转动灵活。</div>
+      </section>
+
+      <!-- ================= WIRING ================= -->
+      <section id="wiring" class="step">
+        <h2><span class="num">04</span>接线</h2>
+        <p class="lead">这是本版与 Arduino 原版差异最大的地方。WEMOS D1 的引脚分配如下（固件里写死的，别接错）。</p>
+
+        <div class="card glass">
+          <h3>接线示意图</h3>
+          <div class="svg-wrap">
+          <svg viewBox="0 0 960 620" role="img" aria-label="WEMOS D1 接线示意图">
+            <defs>
+              <radialGradient id="glowG" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#7cff8a" stop-opacity=".55"/>
+                <stop offset="100%" stop-color="#7cff8a" stop-opacity="0"/>
+              </radialGradient>
+              <filter id="soft"><feGaussianBlur stdDeviation="2.2"/></filter>
+            </defs>
+
+            <!-- rails -->
+            <rect x="620" y="120" width="8" height="330" rx="4" fill="#f59e0b" opacity=".85"/>
+            <text x="636" y="100" font-size="13" fill="#fbbf24">5V 电源轨</text>
+            <rect x="700" y="120" width="8" height="330" rx="4" fill="#4b5563"/>
+            <text x="720" y="100" font-size="13" fill="#9ca3af">GND 地线轨</text>
+
+            <!-- board -->
+            <g>
+              <rect x="150" y="120" width="220" height="380" rx="18" fill="#111726" stroke="#2c3952" stroke-width="2"/>
+              <rect x="212" y="96" width="96" height="30" rx="6" fill="#1c2636" stroke="#33415e"/>
+              <text x="260" y="115" text-anchor="middle" font-size="11" fill="#7d8aa5">Micro-USB</text>
+              <rect x="244" y="150" width="32" height="10" rx="3" fill="#3b82f6" opacity=".9"/>
+              <text x="260" y="182" text-anchor="middle" font-size="13" fill="#e8f0ea" font-weight="700">WEMOS D1 mini</text>
+              <text x="260" y="200" text-anchor="middle" font-size="11" fill="#7d8aa5">ESP8266 · 3.3V 逻辑</text>
+
+              <!-- left pads -->
+              <g font-size="12" fill="#b6c2d4">
+                <circle cx="152" cy="170" r="7" fill="#3b82f6"/><text x="150" y="176" text-anchor="end">RST</text>
+                <circle cx="152" cy="205" r="7" fill="#3b82f6"/><text x="150" y="211" text-anchor="end">A0</text>
+                <circle cx="152" cy="240" r="7" fill="#3b82f6"/><text x="150" y="246" text-anchor="end">D0</text>
+                <circle cx="152" cy="275" r="7" fill="#3b82f6"/><text x="150" y="281" text-anchor="end">D1</text>
+                <circle cx="152" cy="310" r="7" fill="#3b82f6"/><text x="150" y="316" text-anchor="end">D2</text>
+                <circle cx="152" cy="345" r="9" fill="#f43f5e"/><text x="150" y="352" text-anchor="end">D3 · GPIO0</text>
+                <circle cx="152" cy="380" r="7" fill="#3b82f6"/><text x="150" y="386" text-anchor="end">D4</text>
+                <circle cx="152" cy="415" r="7" fill="#f59e0b"/><text x="150" y="421" text-anchor="end">3V3</text>
+                <circle cx="152" cy="450" r="7" fill="#6b7280"/><text x="150" y="456" text-anchor="end">GND</text>
+              </g>
+              <!-- right pads -->
+              <g font-size="12" fill="#b6c2d4">
+                <circle cx="368" cy="170" r="9" fill="#f59e0b"/><text x="372" y="176">5V</text>
+                <circle cx="368" cy="205" r="9" fill="#6b7280"/><text x="372" y="211">GND</text>
+                <circle cx="368" cy="240" r="7" fill="#3b82f6"/><text x="372" y="246">TX</text>
+                <circle cx="368" cy="275" r="7" fill="#3b82f6"/><text x="372" y="281">RX</text>
+                <circle cx="368" cy="310" r="7" fill="#3b82f6"/><text x="372" y="316">D8</text>
+                <circle cx="368" cy="345" r="9" fill="#f43f5e"/><text x="372" y="352">D7 · GPIO13</text>
+                <circle cx="368" cy="380" r="9" fill="#f43f5e"/><text x="372" y="386">D6 · GPIO12</text>
+                <circle cx="368" cy="415" r="9" fill="#f43f5e"/><text x="372" y="421">D5 · GPIO14</text>
+              </g>
+              <!-- board caption -->
+              <text x="150" y="530" font-size="12" fill="#7d8aa5">其余引脚：D0/D1/D2/D8 等留空即可；D3/D4/D8 为启动敏感引脚，<tspan font-weight="700" fill="#fca5a5">不要接负载</tspan>（D4 在本版未用）。</text>
+            </g>
+
+            <!-- servo L -->
+            <g>
+              <rect x="470" y="180" width="120" height="86" rx="10" fill="#13202f" stroke="#2f4a5e"/>
+              <text x="530" y="212" text-anchor="middle" font-size="14" fill="#e8f0ea" font-weight="700">左舵机 L</text>
+              <circle cx="494" cy="244" r="6" fill="#f43f5e"/><text x="508" y="248" font-size="12" fill="#fda4af">信号 D6</text>
+              <circle cx="494" cy="260" r="6" fill="#f59e0b"/><text x="508" y="264" font-size="12" fill="#fcd34d">VCC · 5V</text>
+              <circle cx="494" cy="276" r="6" fill="#6b7280"/><text x="508" y="280" font-size="12" fill="#9ca3af">GND</text>
+              <path d="M368 380 L390 380 L430 380 L470 244" fill="none" stroke="#f43f5e" stroke-width="2" opacity=".9"/>
+              <path d="M368 170 L430 170 L470 260" fill="none" stroke="#f59e0b" stroke-width="2" opacity=".9"/>
+              <path d="M368 205 L420 205 L470 276" fill="none" stroke="#6b7280" stroke-width="2" opacity=".9"/>
+            </g>
+
+            <!-- servo R -->
+            <g>
+              <rect x="470" y="300" width="120" height="86" rx="10" fill="#13202f" stroke="#2f4a5e"/>
+              <text x="530" y="332" text-anchor="middle" font-size="14" fill="#e8f0ea" font-weight="700">右舵机 R</text>
+              <circle cx="494" cy="364" r="6" fill="#f43f5e"/><text x="508" y="368" font-size="12" fill="#fda4af">信号 D7</text>
+              <circle cx="494" cy="380" r="6" fill="#f59e0b"/><text x="508" y="384" font-size="12" fill="#fcd34d">VCC · 5V</text>
+              <circle cx="494" cy="396" r="6" fill="#6b7280"/><text x="508" y="400" font-size="12" fill="#9ca3af">GND</text>
+              <path d="M368 345 L430 345 L470 364" fill="none" stroke="#f43f5e" stroke-width="2" opacity=".9"/>
+              <path d="M430 180 L470 380" fill="none" stroke="#f59e0b" stroke-width="2" opacity=".9"/>
+              <path d="M420 215 L470 396" fill="none" stroke="#6b7280" stroke-width="2" opacity=".9"/>
+            </g>
+
+            <!-- UV LED -->
+            <g>
+              <rect x="470" y="430" width="120" height="74" rx="10" fill="#13202f" stroke="#2f4a5e"/>
+              <text x="530" y="458" text-anchor="middle" font-size="14" fill="#e8f0ea" font-weight="700">UV LED</text>
+              <text x="530" y="474" text-anchor="middle" font-size="11" fill="#93a5a0">低电平点亮（Active LOW）</text>
+              <circle cx="494" cy="490" r="6" fill="#f43f5e"/><text x="508" y="494" font-size="12" fill="#fda4af">正极 → D5</text>
+              <circle cx="494" cy="505" r="6" fill="#6b7280"/><text x="508" y="509" font-size="12" fill="#9ca3af">负极 → GND</text>
+              <path d="M368 415 L400 415 L404 493 L470 493" fill="none" stroke="#f43f5e" stroke-width="2" opacity=".9"/>
+              <path d="M700 505 L600 505 L494 505" fill="none" stroke="#6b7280" stroke-width="2" opacity=".9"/>
+              <path d="M400 415 Q410 415 410 425 L410 490" stroke="#f59e0b" stroke-width="2" fill="none" opacity=".9"/>
+              <text x="412" y="452" font-size="11" fill="#fcd34d">100Ω</text>
+            </g>
+
+            <!-- button -->
+            <g>
+              <rect x="470" y="535" width="120" height="60" rx="10" fill="#13202f" stroke="#2f4a5e"/>
+              <text x="530" y="558" text-anchor="middle" font-size="14" fill="#e8f0ea" font-weight="700">按钮</text>
+              <text x="530" y="574" text-anchor="middle" font-size="11" fill="#93a5a0">内部上拉 · 另一端 GND</text>
+              <circle cx="494" cy="586" r="6" fill="#f43f5e"/><text x="508" y="590" font-size="12" fill="#fda4af">一脚 → D3</text>
+              <path d="M152 345 L420 345 L470 586" fill="none" stroke="#f43f5e" stroke-width="2" opacity=".9"/>
+              <path d="M700 586 L510 586" fill="none" stroke="#6b7280" stroke-width="2" opacity=".7"/>
+            </g>
+
+            <!-- power note -->
+            <g>
+              <circle cx="740" cy="460" r="18" fill="url(#glowG)" filter="url(#soft)"/>
+              <text x="775" y="450" font-size="12" fill="#e8f0ea">舵机瞬间电流较大</text>
+              <text x="775" y="468" font-size="12" fill="#7d8aa5">建议 5V/1A+ 电源，USB 直插供电</text>
+            </g>
+          </svg>
+          </div>
+        </div>
+
+        <div class="table-wrap glass">
+          <table>
+            <thead>
+              <tr><th>功能</th><th>WEMOS D1 引脚</th><th>GPIO</th><th>连接说明</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>左舵机信号</td><td><b>D6</b></td><td>GPIO12</td><td>舵机 VCC→5V、GND→GND</td></tr>
+              <tr><td>右舵机信号</td><td><b>D7</b></td><td>GPIO13</td><td>同上</td></tr>
+              <tr><td>UV LED 正极</td><td><b>D5</b></td><td>GPIO14</td><td>经 100Ω 电阻；LED 负极→GND；低电平点亮</td></tr>
+              <tr><td>按钮一脚</td><td><b>D3</b></td><td>GPIO0</td><td>使用板载上拉，另一端接 GND；按下触发</td></tr>
+              <tr><td>舵机电源</td><td>5V / GND</td><td>—</td><td>两舵机 VCC 并到 5V，GND 并到地；建议外接 5V 电源与 D1 共地</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout warn-callout">
+          <b>注意事项</b>
+          <ul>
+            <li>接线顺序建议：先接 GND 与电源，再接信号线，最后接按钮；每接完一排用万用表/目视检查一遍再上电。</li>
+            <li>D3 / D4 / D8 是启动敏感引脚，本版把按钮放在 D3（内部上拉 + 接地触发），<b>不要给 D4/D8 挂负载</b>。</li>
+            <li>舵机供电强烈建议独立 5V 电源并与 D1 共地，否则写字瞬间电压跌落会导致 D1 重启。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= FIRMWARE ================= -->
+      <section id="firmware" class="step">
+        <h2><span class="num">05</span>固件烧录与配网</h2>
+        <p class="lead">固件在 <code>PlotClock-ESP8266/PlotClock-ESP8266.ino</code>。已内置配网与校时逻辑，烧完后几乎开箱即用。</p>
+
+        <div class="steps-h">
+          <div class="card glass">
+            <h3><span class="mini-num">1</span>装 ESP8266 板卡包</h3>
+            <p>Arduino IDE → 首选项 → 附加开发板管理器网址：</p>
+            <pre>http://arduino.esp8266.com/stable/package_esp8266com_index.json</pre>
+            <p>「开发板管理器」搜索 <b>esp8266</b>，安装 <i>ESP8266 Community</i> 的包。</p>
+          </div>
+          <div class="card glass">
+            <h3><span class="mini-num">2</span>装库</h3>
+            <p>库管理器搜索安装：<b>WiFiManager by tzapu</b>。</p>
+            <p><code>ESP8266WiFi</code>、<code>Servo</code>、<code>time.h</code> 都随板卡包自带，无需额外安装。旧版的 Time / DS1307RTC 库本版不再需要。</p>
+          </div>
+          <div class="card glass">
+            <h3><span class="mini-num">3</span>烧录</h3>
+            <p>打开 <code>PlotClock-ESP8266.ino</code>，开发板选 <b>LOLIN(WEMOS) D1 R2 &amp; mini</b>，选择端口（Mac 上通常是 <code>/dev/cu.usbserial-xxxx</code>）→ 上传。</p>
+          </div>
+          <div class="card glass">
+            <h3><span class="mini-num">4</span>可调宏</h3>
+            <p>代码顶部可开关：<code>OPTION_12_HOUR</code>（12 小时制）、<code>CALIBRATE</code>（校准）、<code>GRID</code>（点阵验证）。默认是 24 小时制 + 正常模式，开箱即可。</p>
+          </div>
+        </div>
+
+        <h3 class="sub-section">配网与校时（无需 RTC）</h3>
+        <div class="grid2">
+          <div class="card glass">
+            <h4>首次上电</h4>
+            <ol class="tick">
+              <li>上电后 D1 开启热点 <code>PlotClock-Setup</code></li>
+              <li>手机连接该热点，会自动弹出配置页（若未弹出打开 <code>192.168.4.1</code>）</li>
+              <li>选择你的 WiFi 并输入密码保存，D1 自动连接</li>
+              <li>若 180 秒内未配网，会自动重启重新进入配网模式</li>
+            </ol>
+          </div>
+          <div class="card glass">
+            <h4>自动校时</h4>
+            <ol class="tick">
+              <li>连上网络后自动以 <code>ntp1.aliyun.com</code> / <code>ntp2.aliyun.com</code> / <code>pool.ntp.org</code> 校时</li>
+              <li>时区固定为 UTC+8（北京时间），不用设置</li>
+              <li>之后每次画时间都先读网络时间，<b>永远不会漂移</b></li>
+              <li>想重新配网：烧录时选「Erase Flash: All Flash Contents」擦除后重拍上电</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= ASSEMBLE ================= -->
+      <section id="assemble" class="step">
+        <h2><span class="num">06</span>机械装配</h2>
+        <p class="lead">机械部分与原版一致。核心顺序：<b>先接线上电验证 → 再装机械臂 → 最后合壳</b>，出问题好排查。</p>
+
+        <div class="acc">
+          <details open>
+            <summary><span>6.1</span> 准备电子件</summary>
+            <div class="acc-body">
+              <ul class="tick">
+                <li>UV LED 两个脚焊上约 10cm 引线（<b>正极是长脚</b>），套热缩管防短路</li>
+                <li>按钮两个脚也焊上引线</li>
+                <li>两个舵机确认是正向 0–180° 舵机（舵盘四角都有螺丝孔），装入外壳前面板对应舵机位，线从前方开口穿出</li>
+                <li>WEMOS D1 用双面胶/热熔胶固定在外壳内部</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary><span>6.2</span> 接线（对照第 04 节）</summary>
+            <div class="acc-body">
+              <ul class="tick">
+                <li>按接线表和接线图把所有连线接好，<b>统一共地</b></li>
+                <li>上电先用串口监视器（115200）观察：应打印 WiFi 连接信息与时间读数</li>
+                <li>按一下按钮，如果舵机有动作就说明整链路通了（哪怕画得歪，后面校准）</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary><span>6.3</span> 组装机械臂</summary>
+            <div class="acc-body">
+              <ul class="tick">
+                <li>Arm1-2、Arm3、Arm4 之间用 M3 螺丝连接，转动顺畅不卡顿、无虚位</li>
+                <li>LED 装入臂端灯座，把 <code>led_cover</code> 聚光锥罩上去</li>
+                <li>舵盘先套在舵机输出轴上（<b>不拧紧</b>），用手把机械臂转到大致中位附近再上紧舵盘螺丝</li>
+                <li>把机械臂组件固定到舵机上（左右对应 D6 左 / D7 右，别装反了）</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary><span>6.4</span> 合拢外壳与表面处理</summary>
+            <div class="acc-body">
+              <ul class="tick">
+                <li>前、顶、底壳用 M3 螺丝合拢；有走线需要时可用 <code>Case_Top_Human</code> 变体开孔</li>
+                <li>荧光贴按前面板书写区剪裁，贴在 <code>Case_Front</code> 外侧，荧光面朝外</li>
+                <li>四个橡胶脚垫贴到底部</li>
+                <li>最后通电，进入<a href="#calibrate">第 07 节校准</a></li>
+              </ul>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ================= CALIBRATE ================= -->
+      <section id="calibrate" class="step">
+        <h2><span class="num">07</span>伺服校准</h2>
+        <p class="lead">机械臂默认参数在各部件有公差时会画歪。校准分两步：<b>CALIBRATE</b>（对极限位置）→ <b>GRID</b>（验证点阵）。</p>
+
+        <div class="table-wrap glass">
+          <table>
+            <thead>
+              <tr><th>常量</th><th>默认值</th><th>作用</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>SERVO_LEFT_ZERO</code></td><td>1650</td><td>左舵机零点（状态 1：左臂 0°）</td></tr>
+              <tr><td><code>SERVO_RIGHT_SCALE</code></td><td>700</td><td>右舵机转角→脉宽比例（状态 1）</td></tr>
+              <tr><td><code>SERVO_RIGHT_ZERO</code></td><td>750</td><td>右舵机零点（状态 2：右臂 0°）</td></tr>
+              <tr><td><code>SERVO_LEFT_SCALE</code></td><td>650</td><td>左舵机转角→脉宽比例（状态 2）</td></tr>
+              <tr><td><code>DRAW_DELAY</code></td><td>3</td><td>写字速度（ms/点），越大越慢越稳</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="steps-h">
+          <div class="card glass">
+            <h3><span class="mini-num">A</span>CALIBRATE 对角校准</h3>
+            <ol class="tick">
+              <li>取消 <code>//#define CALIBRATE</code> 注释，上传</li>
+              <li>机械臂每 2 秒在两个极限位置间切换，UV 灯交替亮/灭</li>
+              <li>亮的位置对应<strong>状态 2</strong>（<code>SERVO_RIGHT_ZERO</code> + <code>SERVO_LEFT_SCALE</code>）；灭的位置对应<strong>状态 1</strong>（<code>SERVO_LEFT_ZERO</code> + <code>SERVO_RIGHT_SCALE</code>）</li>
+              <li>调节这四个常量，让两个落点分别贴近荧光书写区的<b>左下</b>与<b>右上</b>极限，且覆盖面最大</li>
+            </ol>
+          </div>
+          <div class="card glass">
+            <h3><span class="mini-num">B</span>GRID 点阵验证</h3>
+            <ol class="tick">
+              <li>把 <code>CALIBRATE</code> 注释掉，取消 <code>//#define GRID</code>，上传</li>
+              <li>会在 0–70mm × 0–40mm 区域、每 10mm 打一个 UV 点（共 5×8 个点）</li>
+              <li>检查点阵是否横平竖直、对称居中，微调常量直到点阵方正</li>
+            </ol>
+          </div>
+          <div class="card glass">
+            <h3><span class="mini-num">C</span>恢复正常模式</h3>
+            <ol class="tick">
+              <li>两个宏都注释掉，重新上传</li>
+              <li>按按钮验证时间书写居中，荧光效果完整</li>
+              <li>校准参考视频（原版作者）：<a href="https://youtu.be/4viW9ADqX2w" target="_blank" rel="noopener">youtu.be/4viW9ADqX2w</a></li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= USAGE ================= -->
+      <section id="usage" class="step">
+        <h2><span class="num">08</span>使用与常见问题</h2>
+        <p class="lead">一切就绪后：<b>按一下按钮</b>，机械臂用 UV 灯把当前「时:分」写到荧光屏上，发光数分钟后渐息。可以反复按，每次都是崭新的时间。</p>
+
+        <div class="faq glass">
+          <div class="faq-item"><b>舵机一直转 / 乱转？</b><p>用了连续旋转舵机。请换成正向 0–180° 舵机（舵盘四角都有螺丝孔）。</p></div>
+          <div class="faq-item"><b>写出来的字歪斜、位置不对？</b><p>先做第 07 节的 CALIBRATE + GRID 两步校准，重点微调四个常量。</p></div>
+          <div class="faq-item"><b>UV 灯不亮？</b><p>检查 D5 接线与 100Ω 电阻方向；LED 负极必须接 GND。注意它是<b>低电平点亮</b>，万用表量 D5 平时为高电平是正常的。</p></div>
+          <div class="faq-item"><b>时间不对/不动？</b><p>确认已配网成功且网络可达（NTP 阿里云）。断网状态下时间会停留在最后成功校时的值。</p></div>
+          <div class="faq-item"><b>字写得太快看不清 / 荧光太浅？</b><p>把 <code>DRAW_DELAY</code> 调大（如 5–8）放慢笔速；UV 灯落点贴近荧光贴面 5mm 内效果最佳；荧光贴选荧光绿。</p></div>
+          <div class="faq-item"><b>想显示 12 小时制？</b><p>取消 <code>//#define OPTION_12_HOUR</code> 的注释后重新烧录。</p></div>
+        </div>
+
+        <div class="callout">
+          <b>灵感与感谢：</b>本项目是对原版 <a href="https://makezine.com/projects/glow-in-the-dark-robot-plot-clock/" target="_blank" rel="noopener">Glow-in-the-Dark Robot Plot Clock</a>（Tucker Shannon，Make: Magazine）的 ESP8266 改造。机械结构与 STL 均来自原版 Thingiverse 文件（<a href="https://thingiverse.com/thing:2833916" target="_blank" rel="noopener">thing:2833916</a>）。
+        </div>
+      </section>
+
+    </article>
+  </div>
+</main>
+
+<footer class="footer glass">
+  <p>Plot Clock · ESP8266 改造版装配指南 &nbsp;|&nbsp; 源码见 GitHub 仓库 &nbsp;|&nbsp; 由荧光与想象力点亮</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

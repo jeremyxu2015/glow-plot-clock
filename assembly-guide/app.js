@@ -5,6 +5,22 @@
 (function () {
   "use strict";
 
+  /* ---------------- 主控版本切换 ---------------- */
+  function setBoard(b) {
+    document.body.dataset.board = b;
+    document.querySelectorAll(".board-switch button").forEach(function (btn) {
+      btn.classList.toggle("active", btn.dataset.board === b);
+    });
+    try { localStorage.setItem("pc-board", b); } catch (e) {}
+  }
+  document.querySelectorAll(".board-switch button").forEach(function (btn) {
+    btn.addEventListener("click", function () { setBoard(btn.dataset.board); });
+  });
+  try {
+    var saved = localStorage.getItem("pc-board");
+    if (saved === "esp8266" || saved === "esp32c3") setBoard(saved);
+  } catch (e) {}
+
   /* ---------------- 演示动画 ---------------- */
   var canvas = document.getElementById("demo");
   if (canvas) {

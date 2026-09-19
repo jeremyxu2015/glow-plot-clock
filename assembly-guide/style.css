@@ -178,6 +178,21 @@ summary span{color:var(--acc);font-weight:800}
 .footer{max-width:1180px;margin:10px auto 26px;padding:22px 30px;text-align:center;color:var(--muted);font-size:.85rem}
 .footer p{margin-left:16px;margin-right:16px}
 
+/* ============ 主控版本切换 ============ */
+.board-switch{display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:999px;margin-top:22px;width:max-content;max-width:100%}
+.bs-label{font-size:.78rem;color:var(--muted);letter-spacing:.14em;white-space:nowrap}
+.bs-btns{display:flex;gap:6px;background:rgba(255,255,255,.05);padding:4px;border-radius:999px}
+.bs-btns button{border:0;background:transparent;color:var(--muted);font-size:.86rem;padding:7px 16px;border-radius:999px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:.18s}
+.bs-btns button:hover{color:var(--txt)}
+.bs-btns button.active{background:linear-gradient(135deg,#a3ffae,#34d399);color:#052013;font-weight:700}
+.board-switch.compact{margin:0 0 14px;padding:8px;border-radius:14px;width:100%}
+.board-switch.compact .bs-btns{border:0;background:transparent;padding:0;gap:4px}
+.board-switch.compact .bs-btns button{flex:1;font-size:.85rem;text-align:center}
+
+/* 版本内容显示/隐藏 */
+body[data-board="esp8266"] [data-for="esp32c3"]{display:none!important}
+body[data-board="esp32c3"] [data-for="esp8266"]{display:none!important}
+
 /* svg tweaks */
 .svg-wrap{width:100%;overflow-x:auto}
 .svg-wrap svg{width:100%;height:auto;min-width:760px}
@@ -198,6 +213,10 @@ summary span{color:var(--acc);font-weight:800}
   .hero{min-height:66vh}
   .card{padding:18px}
   td,th{padding:10px 10px}
+  .board-switch{width:100%}
+  .bs-label{display:none}
+  .bs-btns{width:100%}
+  .bs-btns button{flex:1;font-size:.78rem;padding:7px 8px}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}

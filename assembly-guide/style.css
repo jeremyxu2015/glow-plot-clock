@@ -189,9 +189,13 @@ summary span{color:var(--acc);font-weight:800}
 .board-switch.compact .bs-btns{border:0;background:transparent;padding:0;gap:4px}
 .board-switch.compact .bs-btns button{flex:1;font-size:.85rem;text-align:center}
 
-/* 版本内容显示/隐藏 */
-body[data-board="esp8266"] [data-for="esp32c3"]{display:none!important}
-body[data-board="esp32c3"] [data-for="esp8266"]{display:none!important}
+/* 版本内容显示/隐藏（三款主控） */
+body[data-board="esp8266"] [data-for="esp32c3"],
+body[data-board="esp8266"] [data-for="esp32"]{display:none!important}
+body[data-board="esp32c3"] [data-for="esp8266"],
+body[data-board="esp32c3"] [data-for="esp32"]{display:none!important}
+body[data-board="esp32"] [data-for="esp8266"],
+body[data-board="esp32"] [data-for="esp32c3"]{display:none!important}
 
 /* svg tweaks */
 .svg-wrap{width:100%;overflow-x:auto}

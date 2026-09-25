@@ -18,7 +18,7 @@
   });
   try {
     var saved = localStorage.getItem("pc-board");
-    if (saved === "esp8266" || saved === "esp32c3") setBoard(saved);
+    if (saved === "esp8266" || saved === "esp32c3" || saved === "esp32") setBoard(saved);
   } catch (e) {}
 
   /* ---------------- 演示动画 ---------------- */
